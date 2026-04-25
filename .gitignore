@@ -1,0 +1,11 @@
+# 忽略日志目录
+./logs
+
+# 忽略环境变量文件
+.env
+
+# 忽略Python编译文件
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd

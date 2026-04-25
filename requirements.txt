@@ -1,0 +1,21 @@
+# 音频处理依赖
+pyaudio==0.2.14
+wave==0.0.2
+
+# 千问API依赖
+dashscope==1.14.0
+
+# WebSocket依赖
+websocket-client==1.7.0
+
+# HTTP请求依赖
+requests==2.31.0
+
+# UI依赖
+PyQt5==5.15.10
+
+# 配置管理
+python-dotenv==1.0.0
+
+# 音频处理辅助
+numpy==1.26.4

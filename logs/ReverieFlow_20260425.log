@@ -1,0 +1,22 @@
+2026-04-25 22:45:07,161 - ReverieFlow - INFO - 开始录音
+2026-04-25 22:45:07,161 - ReverieFlow - INFO - 选择音频设备: 0
+2026-04-25 22:45:07,162 - ReverieFlow - INFO - 连接到ASR服务
+2026-04-25 22:45:07,162 - ReverieFlow - INFO - 启动音频捕获
+2026-04-25 22:45:07,275 - ReverieFlow - INFO - 录音已启动
+2026-04-25 22:46:04,178 - ReverieFlow - INFO - 停止录音
+2026-04-25 22:46:04,320 - ReverieFlow - INFO - 音频捕获已停止
+2026-04-25 22:46:04,480 - ReverieFlow - INFO - ASR已停止
+2026-04-25 22:46:04,481 - ReverieFlow - INFO - ASR连接已关闭
+2026-04-25 22:46:04,481 - ReverieFlow - INFO - 录音已停止
+2026-04-25 22:46:05,322 - ReverieFlow - INFO - 开始润色文本
+2026-04-25 22:46:06,464 - ReverieFlow - INFO - 文本润色成功
+2026-04-25 22:52:22,704 - ReverieFlow - INFO - 开始录音
+2026-04-25 22:52:22,710 - ReverieFlow - INFO - 选择音频设备: 0
+2026-04-25 22:52:22,710 - ReverieFlow - INFO - 连接到ASR服务
+2026-04-25 22:52:22,711 - ReverieFlow - INFO - 启动音频捕获
+2026-04-25 22:52:23,071 - ReverieFlow - INFO - 录音已启动
+2026-04-25 22:52:26,674 - ReverieFlow - INFO - 停止录音
+2026-04-25 22:52:26,906 - ReverieFlow - INFO - 音频捕获已停止
+2026-04-25 22:52:27,214 - ReverieFlow - INFO - ASR已停止
+2026-04-25 22:52:27,215 - ReverieFlow - INFO - ASR连接已关闭
+2026-04-25 22:52:27,216 - ReverieFlow - INFO - 录音已停止
