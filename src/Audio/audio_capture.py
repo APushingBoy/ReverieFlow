@@ -5,6 +5,8 @@
 """
 
 import pyaudio
+import sounddevice as sd
+import soundcard as sc
 import numpy as np
 import threading
 import queue
@@ -110,20 +112,47 @@ class AudioCapture:
     
     def get_devices(self) -> list:
         """
-        获取可用的音频输入设备
-        
+        获取当前实际可用的音频输入设备
+        使用 soundcard 获取当前活动的设备（过滤掉已断开/未连接的设备）
+        使用 sounddevice 获取正确的设备名（处理 Windows Unicode 编码）
+        使用 pyaudio 进行实际的音频捕获
+
         Returns:
             list: 设备列表
         """
+        # 获取当前活动的麦克风设备名（soundcard 只返回实际连接的设备）
+        try:
+            active_mics = sc.all_microphones()
+            active_names = {mic.name for mic in active_mics}
+        except Exception:
+            active_names = None
+
         devices = []
+        seen_names = set()
+        sd_devices = sd.query_devices()
         for i in range(self.pa.get_device_count()):
             info = self.pa.get_device_info_by_index(i)
             if info['maxInputChannels'] > 0:
-                devices.append({
-                    'index': i,
-                    'name': info['name'],
-                    'channels': info['maxInputChannels']
-                })
+                try:
+                    if i < len(sd_devices):
+                        name = sd_devices[i]['name']
+                    else:
+                        name = info['name']
+                except Exception:
+                    name = info['name']
+
+                # 如果 soundcard 可用，只保留活动设备
+                if active_names is not None and name not in active_names:
+                    continue
+
+                # 按设备名去重，保留第一个出现的
+                if name not in seen_names:
+                    seen_names.add(name)
+                    devices.append({
+                        'index': i,
+                        'name': name,
+                        'channels': info['maxInputChannels']
+                    })
         return devices
     
     def set_device(self, device_index: int) -> bool:

@@ -1,116 +1,212 @@
 #!/usr/bin/env python3
 """
 配置管理模块
-用于加载和管理应用配置
+用于加载和管理应用配置，基于 JSON 格式
+配置文件优先存储在用户 AppData 目录，备选为软件同级目录
 """
 
 import os
-from dotenv import load_dotenv
+import json
+from pathlib import Path
+
+
+DEFAULT_CONFIG = {
+    "asr": {
+        "api_key": "",
+        "api_url": "wss://dashscope.aliyuncs.com/api-ws/v1/inference",
+        "model": "fun-asr-realtime"
+    },
+    "rewrite": {
+        "api_key": "",
+        "api_url": "https://dashscope.aliyuncs.com/api/v1",
+        "model": "qwen3.5-35b-a3b"
+    },
+    "audio": {
+        "sample_rate": 16000,
+        "channels": 1,
+        "chunk_size": 1024
+    },
+    "ui": {
+        "app_name": "ReverieFlow",
+        "window_width": 800,
+        "window_height": 600
+    }
+}
+
 
 class ConfigManager:
     """
     配置管理类
-    用于加载和管理应用配置
+    用于管理 config.json 的创建、读取和写入
     """
-    
-    def __init__(self, config_file: str = ".env"):
+
+    def __init__(self, config_file: str = None):
         """
         初始化配置管理器
-        
+
         Args:
-            config_file: 配置文件路径
+            config_file: 配置文件路径，如果不指定则自动选择
         """
-        self.config_file = config_file
+        if config_file:
+            self.config_path = Path(config_file)
+        else:
+            self.config_path = self._resolve_config_path()
+
         self.config = {}
-        self.load_config()
-    
-    def load_config(self):
+        self._load_or_create()
+
+    def _resolve_config_path(self) -> Path:
         """
-        加载配置文件
+        解析配置文件路径
+        优先使用 AppData 目录，备选为软件同级目录
+
+        Returns:
+            Path: 配置文件路径
         """
-        # 尝试加载.env文件
-        load_dotenv(self.config_file)
-        
-        # 从环境变量加载配置
-        self.config = {
-            # ASR API 配置
-            "ASR_API_KEY": os.getenv("ASR_API_KEY", ""),
-            "ASR_API_URL": os.getenv("ASR_API_URL", "wss://api.example.com/asr/stream"),
-            "ASR_MODEL": os.getenv("ASR_MODEL", "whisper-1"),
-            
-            # 文本润色 API 配置
-            "REWRITE_API_KEY": os.getenv("REWRITE_API_KEY", ""),
-            "REWRITE_API_URL": os.getenv("REWRITE_API_URL", "https://api.example.com/chat/completions"),
-            "REWRITE_MODEL": os.getenv("REWRITE_MODEL", "gpt-4o-mini"),
-            
-            # 音频配置
-            "SAMPLE_RATE": os.getenv("SAMPLE_RATE", "16000"),
-            "CHANNELS": os.getenv("CHANNELS", "1"),
-            "CHUNK_SIZE": os.getenv("CHUNK_SIZE", "1024"),
-            
-            # UI 配置
-            "APP_NAME": os.getenv("APP_NAME", "ReverieFlow"),
-            "WINDOW_WIDTH": os.getenv("WINDOW_WIDTH", "800"),
-            "WINDOW_HEIGHT": os.getenv("WINDOW_HEIGHT", "600"),
-        }
-    
-    def get(self, key: str, default: str = "") -> str:
+        app_dir = Path("ReverieFlow")
+
+        try:
+            appdata = os.environ.get("APPDATA")
+            if appdata:
+                config_dir = Path(appdata) / app_dir
+                config_dir.mkdir(parents=True, exist_ok=True)
+                return config_dir / "config.json"
+        except Exception:
+            pass
+
+        return Path(__file__).resolve().parent.parent.parent / "config.json"
+
+    def _load_or_create(self):
+        """
+        加载配置文件，如果不存在则创建默认配置
+        """
+        if self.config_path.exists():
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                self.config = self._merge_with_defaults(loaded)
+            except (json.JSONDecodeError, IOError):
+                self.config = DEFAULT_CONFIG.copy()
+                self.save()
+        else:
+            self.config = DEFAULT_CONFIG.copy()
+            self.save()
+
+    def _merge_with_defaults(self, loaded: dict) -> dict:
+        """
+        将加载的配置与默认配置合并，确保新字段不会缺失
+
+        Args:
+            loaded: 从文件加载的配置
+
+        Returns:
+            dict: 合并后的配置
+        """
+        merged = DEFAULT_CONFIG.copy()
+        for section, values in loaded.items():
+            if section in merged and isinstance(values, dict) and isinstance(merged[section], dict):
+                merged[section].update(values)
+            else:
+                merged[section] = values
+        return merged
+
+    def get(self, section: str, key: str, default: str = "") -> str:
         """
         获取配置值
-        
+
         Args:
+            section: 配置分组名
             key: 配置键
             default: 默认值
-            
+
         Returns:
             str: 配置值
         """
-        return self.config.get(key, default)
-    
-    def get_int(self, key: str, default: int = 0) -> int:
+        try:
+            return str(self.config.get(section, {}).get(key, default))
+        except Exception:
+            return str(default)
+
+    def get_int(self, section: str, key: str, default: int = 0) -> int:
         """
         获取整数类型的配置值
-        
+
         Args:
+            section: 配置分组名
             key: 配置键
             default: 默认值
-            
+
         Returns:
             int: 配置值
         """
         try:
-            return int(self.config.get(key, default))
-        except ValueError:
+            return int(self.config.get(section, {}).get(key, default))
+        except (ValueError, TypeError):
             return default
-    
-    def get_bool(self, key: str, default: bool = False) -> bool:
+
+    def get_bool(self, section: str, key: str, default: bool = False) -> bool:
         """
         获取布尔类型的配置值
-        
+
         Args:
+            section: 配置分组名
             key: 配置键
             default: 默认值
-            
+
         Returns:
             bool: 配置值
         """
-        value = self.config.get(key, str(default)).lower()
-        return value in ("true", "1", "yes", "y")
-    
-    def set(self, key: str, value: str):
+        try:
+            value = self.config.get(section, {}).get(key, str(default))
+            if isinstance(value, bool):
+                return value
+            return str(value).lower() in ("true", "1", "yes", "y")
+        except Exception:
+            return default
+
+    def set(self, section: str, key: str, value):
         """
         设置配置值
-        
+
         Args:
+            section: 配置分组名
             key: 配置键
             value: 配置值
         """
-        self.config[key] = value
-    
+        if section not in self.config:
+            self.config[section] = {}
+        self.config[section][key] = value
+
+    def get_section(self, section: str) -> dict:
+        """
+        获取整个分组的配置
+
+        Args:
+            section: 配置分组名
+
+        Returns:
+            dict: 该分组的配置字典
+        """
+        return self.config.get(section, {}).copy()
+
+    def get_all(self) -> dict:
+        """
+        获取完整配置
+
+        Returns:
+            dict: 完整配置字典的深拷贝
+        """
+        return json.loads(json.dumps(self.config))
+
     def save(self):
         """
-        保存配置到文件
+        保存配置到 JSON 文件
         """
-        with open(self.config_file, "w", encoding="utf-8") as f:
-            for key, value in self.config.items():
-                f.write(f"{key}={value}\n")
+        try:
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            print(f"保存配置文件失败: {e}")
+
+    def __repr__(self) -> str:
+        return f"ConfigManager(path={self.config_path})"

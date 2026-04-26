@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ReverieFlow - Windows 语音识别客户端
-参考Voxt项目设计，实现流式ASR和文本润色功能
+基于 Fluent Design 的全新界面
 """
 
 import sys
@@ -11,12 +11,20 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from PyQt5.QtWidgets import QApplication
-from UI.main_window import MainWindow
+from PyQt5.QtCore import Qt
+from qfluentwidgets import setTheme, Theme
+
+# 设置高 DPI 缩放
+QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+
+app = QApplication(sys.argv)
+
+# 设置主题（跟随系统）
+setTheme(Theme.AUTO)
+
+from UI.main_app import MainWindow
 
 if __name__ == "__main__":
-    # 创建应用实例
-    app = QApplication(sys.argv)
-    
     # 创建主窗口
     window = MainWindow()
     window.show()
