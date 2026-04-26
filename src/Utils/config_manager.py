@@ -2,7 +2,7 @@
 """
 配置管理模块
 用于加载和管理应用配置，基于 JSON 格式
-配置文件优先存储在用户 AppData 目录，备选为软件同级目录
+配置文件存储在软件同级目录，支持便携使用（Portable）
 """
 
 import os
@@ -58,22 +58,11 @@ class ConfigManager:
     def _resolve_config_path(self) -> Path:
         """
         解析配置文件路径
-        优先使用 AppData 目录，备选为软件同级目录
+        使用软件同级目录，支持便携使用（Portable）
 
         Returns:
             Path: 配置文件路径
         """
-        app_dir = Path("ReverieFlow")
-
-        try:
-            appdata = os.environ.get("APPDATA")
-            if appdata:
-                config_dir = Path(appdata) / app_dir
-                config_dir.mkdir(parents=True, exist_ok=True)
-                return config_dir / "config.json"
-        except Exception:
-            pass
-
         return Path(__file__).resolve().parent.parent.parent / "config.json"
 
     def _load_or_create(self):

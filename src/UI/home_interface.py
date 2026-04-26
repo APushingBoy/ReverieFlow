@@ -108,6 +108,7 @@ class EngineController(QObject):
 
             self.is_recording = True
             self.status_changed.emit("录音中...")
+            self.asr_result.emit("", True)
         except Exception as e:
             self.asr_error.emit(f"启动录音失败: {e}")
 
@@ -256,9 +257,9 @@ class HomeInterface(QWidget):
         self.hotkey_listener = HotkeyListener(self._toggle_recording)
         self._pending_rewrite_text = ""
         self._use_overlay = False
+        self._devices_loaded = False
         self.init_ui()
         self._connect_signals()
-        self._load_devices()
         self.hotkey_listener.start()
 
     def init_ui(self):
@@ -285,6 +286,7 @@ class HomeInterface(QWidget):
         device_label.setStyleSheet("font-size: 14px;")
         self.device_combo = QComboBox()
         self.device_combo.setMinimumWidth(250)
+        self.device_combo.mousePressEvent = self._on_device_combo_clicked
         device_layout.addWidget(device_label)
         device_layout.addWidget(self.device_combo)
         device_layout.addStretch()
@@ -341,8 +343,11 @@ class HomeInterface(QWidget):
 
     def _load_devices(self):
         """
-        加载音频设备列表
+        加载音频设备列表（延迟初始化）
         """
+        if self._devices_loaded:
+            return
+
         try:
             if not self.engine.audio_capture:
                 self.engine.init_engines()
@@ -353,10 +358,22 @@ class HomeInterface(QWidget):
         except Exception:
             self.device_combo.addItem("默认设备", None)
 
+        self._devices_loaded = True
+
+    def _on_device_combo_clicked(self, event):
+        """
+        设备下拉框点击事件（延迟加载设备）
+        """
+        self._load_devices()
+        QComboBox.mousePressEvent(self.device_combo, event)
+
     def _toggle_recording(self):
         """
         切换录音状态（快捷键触发）
         """
+        if not self._devices_loaded:
+            self._load_devices()
+
         if not self.engine.is_recording:
             self._use_overlay = True
             device_index = self.device_combo.currentData()
@@ -368,6 +385,9 @@ class HomeInterface(QWidget):
         """
         录音按钮点击事件
         """
+        if not self._devices_loaded:
+            self._load_devices()
+
         if not self.engine.is_recording:
             device_index = self.device_combo.currentData()
             self.engine.start_recording(device_index)
@@ -397,7 +417,10 @@ class HomeInterface(QWidget):
         scrollbar.setValue(scrollbar.maximum())
 
         if self._use_overlay:
-            self.overlay.show_text(display_text, processing=False)
+            if not display_text:
+                self.overlay.show_waiting()
+            else:
+                self.overlay.show_text(display_text, processing=False)
 
     def _on_asr_error(self, error: str):
         """

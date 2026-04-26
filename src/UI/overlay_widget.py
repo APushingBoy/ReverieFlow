@@ -73,6 +73,22 @@ class OverlayWidget(QWidget):
         self.show()
         self.move_to_bottom_center()
 
+    def show_waiting(self):
+        """
+        显示等待状态：正在等待说话
+        """
+        self.label.setText("正在等待说话…")
+        self.label.setStyleSheet(
+            "background-color: rgba(30, 30, 30, 220);"
+            "color: gray;"
+            "border-radius: 8px;"
+            "padding: 8px 16px;"
+            "font-size: 14px;"
+        )
+        self.adjust_size()
+        self.show()
+        self.move_to_bottom_center()
+
     def adjust_size(self):
         """
         根据内容调整窗口大小

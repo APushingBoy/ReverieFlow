@@ -98,7 +98,7 @@ class TextRewriter:
             
             # 处理响应
             if response.status_code == 200:
-                print(f'收到了response: {response}')
+                # print(f'收到了response: {response}')
                 rewritten_text = response.output.choices[0].message.content[0]["text"]
                 print(f'润色后的文本: {rewritten_text}')
                 

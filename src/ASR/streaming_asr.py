@@ -160,13 +160,9 @@ class StreamingASR:
     def close(self):
         """
         关闭识别服务
+        注意：stop() 已在外部调用，此处仅清理状态
         """
         self.is_recording = False
-        if self.recognition:
-            try:
-                self.recognition.stop()
-            except Exception as e:
-                print(f"停止识别服务失败: {e}")
         self.is_connected = False
     
     def __del__(self):

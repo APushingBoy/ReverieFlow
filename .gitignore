@@ -22,3 +22,11 @@ config.json
 venv/
 .venv/
 env/
+
+# 忽略打包输出目录
+dist/
+build/
+out/
+
+# 忽略编译崩溃报告
+nuitka-crash-report.xml
