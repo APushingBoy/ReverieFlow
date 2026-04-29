@@ -129,6 +129,24 @@ class EngineController(QObject):
         except Exception as e:
             self.asr_error.emit(f"停止录音失败: {e}")
 
+    def cancel_recording(self):
+        """
+        取消录音识别（不触发后续润色操作）
+        """
+        if not self.is_recording:
+            return
+
+        try:
+            self.audio_capture.stop()
+            self.streaming_asr.stop()
+            self.streaming_asr.close()
+
+            self.is_recording = False
+            self.history_text = ""
+            self.status_changed.emit("录音已取消")
+        except Exception as e:
+            self.asr_error.emit(f"取消录音失败: {e}")
+
     def rewrite_text(self, text: str):
         """
         润色文本
@@ -244,6 +262,40 @@ class HotkeyListener:
             pass
 
 
+class EscKeyListener:
+    """
+    ESC 键全局监听器
+    用于在录音过程中按 ESC 取消录音
+    """
+
+    def __init__(self, callback):
+        self.callback = callback
+        self.listener = None
+
+    def start(self):
+        """
+        启动快捷键监听
+        """
+        self.listener = keyboard.Listener(
+            on_press=self._on_press
+        )
+        self.listener.start()
+
+    def stop(self):
+        """
+        停止快捷键监听
+        """
+        if self.listener:
+            self.listener.stop()
+
+    def _on_press(self, key):
+        try:
+            if key == keyboard.Key.esc:
+                self.callback()
+        except Exception:
+            pass
+
+
 class HomeInterface(QWidget):
     """
     首页界面类
@@ -255,12 +307,14 @@ class HomeInterface(QWidget):
         self.engine = EngineController(self)
         self.overlay = OverlayWidget()
         self.hotkey_listener = HotkeyListener(self._toggle_recording)
+        self.esc_key_listener = EscKeyListener(self._on_esc_pressed)
         self._pending_rewrite_text = ""
         self._use_overlay = False
         self._devices_loaded = False
         self.init_ui()
         self._connect_signals()
         self.hotkey_listener.start()
+        self.esc_key_listener.start()
 
     def init_ui(self):
         """
@@ -394,6 +448,13 @@ class HomeInterface(QWidget):
         else:
             self.engine.stop_recording()
 
+    def _on_esc_pressed(self):
+        """
+        ESC 键按下事件：取消录音
+        """
+        if self.engine.is_recording:
+            self.engine.cancel_recording()
+
     def _on_rewrite_clicked(self):
         """
         润色按钮点击事件
@@ -476,6 +537,16 @@ class HomeInterface(QWidget):
                     self.overlay.show_text(text, processing=True)
                     self.engine.rewrite_text(text)
             self._use_overlay = False
+        elif status == "录音已取消":
+            self.record_button.setText("开始录音")
+            self.rewrite_button.setEnabled(True)
+            self.original_text.clear()
+            self.rewritten_text_edit.clear()
+
+            if self._use_overlay:
+                self.overlay.clear()
+                self.overlay.hide()
+            self._use_overlay = False
         elif status == "正在润色文本...":
             if self._use_overlay:
                 self.overlay.show_text(self.engine.history_text, processing=True)
@@ -502,6 +573,7 @@ class HomeInterface(QWidget):
         窗口关闭事件
         """
         self.hotkey_listener.stop()
+        self.esc_key_listener.stop()
         self.engine.cleanup()
         self.overlay.close()
         super().closeEvent(event)

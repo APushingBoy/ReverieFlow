@@ -24,6 +24,8 @@ class MainWindow(FluentWindow):
     主窗口类
     """
 
+    APP_VERSION = "v0.2.2"
+
     def __init__(self, show_on_start=True):
         super().__init__()
         self.config = ConfigManager()
@@ -45,7 +47,7 @@ class MainWindow(FluentWindow):
         height = screen.height() // 2
         self.resize(width, height)
         self.setMinimumWidth(700)
-        self.setWindowTitle("ReverieFlow")
+        self.setWindowTitle(f"ReverieFlow {self.APP_VERSION}")
         self.titleBar.iconLabel.hide()
 
         icon_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icon.png")

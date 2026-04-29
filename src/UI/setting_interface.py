@@ -10,6 +10,7 @@ from qfluentwidgets import (
     SettingCardGroup,
     SettingCard,
     PushSettingCard,
+    HyperlinkCard,
     InfoBar,
     InfoBarPosition,
     FluentIcon as FIF,
@@ -202,6 +203,30 @@ class SettingInterface(ScrollArea):
         )
         self.save_button.clicked.connect(self.save_settings)
         self.layout.addWidget(self.save_button)
+
+        self.layout.addSpacing(20)
+
+        about_group = SettingCardGroup("关于", self)
+
+        about_card = SettingCard(
+            FIF.INFO,
+            "ReverieFlow",
+            f"版本 v0.2.2  |  开发者: Homie",
+            about_group
+        )
+        about_group.addSettingCard(about_card)
+
+        github_card = HyperlinkCard(
+            "https://github.com/APushingBoy/ReverieFlow",
+            "访问 GitHub 仓库",
+            FIF.GITHUB,
+            "开源地址",
+            "在 GitHub 上查看源代码",
+            about_group
+        )
+        about_group.addSettingCard(github_card)
+
+        self.layout.addWidget(about_group)
 
     def load_settings(self):
         """

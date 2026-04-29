@@ -126,3 +126,9 @@ class OverlayWidget(QWidget):
         延迟隐藏
         """
         QTimer.singleShot(delay_ms, self.hide)
+
+    def clear(self):
+        """
+        清空内容
+        """
+        self.label.setText("")
