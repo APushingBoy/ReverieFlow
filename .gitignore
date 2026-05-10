@@ -30,3 +30,13 @@ out/
 
 # 忽略编译崩溃报告
 nuitka-crash-report.xml
+
+# 忽略node modules目录
+reverie_flow_rn/node_modules
+
+# 忽略 flutter 版本
+cross_platform/
+
+# 忽略 Claude 相关文件
+.claude/
+CLAUDE.md
