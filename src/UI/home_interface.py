@@ -62,7 +62,8 @@ class EngineController(QObject):
         self.text_rewriter = TextRewriter(
             api_url=self.config.get("rewrite", "api_url", "https://dashscope.aliyuncs.com/api/v1"),
             api_key=self.config.get("rewrite", "api_key", ""),
-            model=self.config.get("rewrite", "model", "qwen3.5-35b-a3b")
+            model=self.config.get("rewrite", "model", "qwen3.5-35b-a3b"),
+            system_prompt=self.config.get("rewrite", "system_prompt", "")
         )
 
     def get_devices(self) -> list:
@@ -151,12 +152,19 @@ class EngineController(QObject):
         """
         润色文本
         """
+        self.config = ConfigManager()
+
         if not text:
             self.rewrite_error.emit("没有可润色的文本")
             return
 
         if not self.text_rewriter:
             self.init_engines()
+        else:
+            self.text_rewriter.api_url = self.config.get("rewrite", "api_url", "https://dashscope.aliyuncs.com/api/v1")
+            self.text_rewriter.api_key = self.config.get("rewrite", "api_key", "")
+            self.text_rewriter.model = self.config.get("rewrite", "model", "qwen3.5-35b-a3b")
+            self.text_rewriter.system_prompt = self.config.get("rewrite", "system_prompt", "")
 
         if not self.text_rewriter.api_key:
             self.rewrite_error.emit("未配置文本润色 API Key，请前往设置页配置")

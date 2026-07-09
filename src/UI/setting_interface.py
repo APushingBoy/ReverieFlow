@@ -5,7 +5,8 @@
 """
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QLineEdit
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QLineEdit, QDialog, QTextEdit
 from qfluentwidgets import (
     SettingCardGroup,
     SettingCard,
@@ -15,9 +16,10 @@ from qfluentwidgets import (
     InfoBarPosition,
     FluentIcon as FIF,
     ScrollArea,
-    ComboBox
+    ComboBox,
+    PushButton
 )
-from Utils.config_manager import ConfigManager
+from Utils.config_manager import ConfigManager, DEFAULT_REWRITE_SYSTEM_PROMPT
 
 
 class ApiKeyCard(SettingCard):
@@ -126,6 +128,7 @@ class SettingInterface(ScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setStyleSheet("background-color: transparent; border: none;")
         self.view.setStyleSheet("background-color: transparent; border: none;")
+        self.rewrite_system_prompt = ""
         self.init_ui()
         self.load_settings()
 
@@ -167,6 +170,16 @@ class SettingInterface(ScrollArea):
 
         self.rewrite_model_card = LineEditCard(FIF.ROBOT, "模型", "文本润色模型名称", rewrite_group)
         rewrite_group.addSettingCard(self.rewrite_model_card)
+
+        self.system_prompt_card = PushSettingCard(
+            "编辑",
+            FIF.ROBOT,
+            "系统提示词",
+            "自定义润色模型的 system prompt",
+            rewrite_group
+        )
+        self.system_prompt_card.clicked.connect(self._open_system_prompt_dialog)
+        rewrite_group.addSettingCard(self.system_prompt_card)
 
         self.layout.addWidget(rewrite_group)
 
@@ -239,6 +252,11 @@ class SettingInterface(ScrollArea):
         self.rewrite_api_key_card.setText(self.config.get("rewrite", "api_key", ""))
         self.rewrite_api_url_card.line_edit.setText(self.config.get("rewrite", "api_url", ""))
         self.rewrite_model_card.line_edit.setText(self.config.get("rewrite", "model", ""))
+        self.rewrite_system_prompt = self.config.get(
+            "rewrite",
+            "system_prompt",
+            DEFAULT_REWRITE_SYSTEM_PROMPT
+        )
 
         startup = self.config.get("ui", "startup_behavior", "show")
         self.startup_behavior_card.comboBox.setCurrentIndex(0 if startup == "show" else 1)
@@ -257,6 +275,7 @@ class SettingInterface(ScrollArea):
         self.config.set("rewrite", "api_key", self.rewrite_api_key_card.text())
         self.config.set("rewrite", "api_url", self.rewrite_api_url_card.line_edit.text())
         self.config.set("rewrite", "model", self.rewrite_model_card.line_edit.text())
+        self.config.set("rewrite", "system_prompt", self.rewrite_system_prompt)
 
         self.config.set("ui", "startup_behavior", "show" if self.startup_behavior_card.comboBox.currentIndex() == 0 else "tray")
         self.config.set("ui", "close_behavior", "minimize" if self.close_behavior_card.comboBox.currentIndex() == 0 else "quit")
@@ -269,3 +288,85 @@ class SettingInterface(ScrollArea):
             parent=self,
             position=InfoBarPosition.BOTTOM
         )
+
+    def _open_system_prompt_dialog(self):
+        """
+        打开系统提示词编辑对话框
+        """
+        try:
+            self._show_system_prompt_dialog()
+        except Exception as e:
+            InfoBar.error(
+                "打开失败",
+                f"系统提示词编辑器打开失败: {e}",
+                parent=self,
+                position=InfoBarPosition.TOP
+            )
+
+    def _show_system_prompt_dialog(self):
+        """
+        显示系统提示词编辑对话框
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("编辑系统提示词")
+        dialog.resize(720, 520)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        tip_label = QLabel("修改后点击“保存设置”才会写入 config.json")
+        tip_label.setStyleSheet("font-size: 13px; color: gray;")
+        layout.addWidget(tip_label)
+
+        prompt_edit = QTextEdit(dialog)
+        prompt_edit.setPlainText(self.rewrite_system_prompt)
+        prompt_edit.setAcceptRichText(False)
+
+        prompt_palette = prompt_edit.palette()
+        prompt_palette.setColor(QPalette.Base, QColor("#ffffff"))
+        prompt_palette.setColor(QPalette.Text, QColor("#202020"))
+        prompt_palette.setColor(QPalette.Highlight, QColor("#0078d4"))
+        prompt_palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
+        prompt_edit.setPalette(prompt_palette)
+        prompt_edit.viewport().setPalette(prompt_palette)
+        prompt_edit.viewport().setAutoFillBackground(True)
+        prompt_edit.viewport().setStyleSheet(
+            "background-color: #ffffff;"
+            "color: #202020;"
+        )
+        prompt_edit.setStyleSheet(
+            "QTextEdit {"
+            "background-color: #ffffff;"
+            "color: #202020;"
+            "border: 1px solid #d0d0d0;"
+            "border-radius: 4px;"
+            "padding: 8px;"
+            "selection-background-color: #0078d4;"
+            "selection-color: #ffffff;"
+            "}"
+            "QTextEdit QWidget {"
+            "background-color: #ffffff;"
+            "color: #202020;"
+            "}"
+        )
+        layout.addWidget(prompt_edit)
+
+        button_layout = QHBoxLayout()
+        reset_button = PushButton("恢复默认")
+        cancel_button = PushButton("取消")
+        ok_button = PushButton("确定")
+
+        reset_button.clicked.connect(lambda: prompt_edit.setPlainText(DEFAULT_REWRITE_SYSTEM_PROMPT))
+        cancel_button.clicked.connect(dialog.reject)
+        ok_button.clicked.connect(dialog.accept)
+
+        button_layout.addWidget(reset_button)
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(ok_button)
+        layout.addLayout(button_layout)
+
+        if dialog.exec_() == QDialog.Accepted:
+            prompt = prompt_edit.toPlainText().strip()
+            self.rewrite_system_prompt = prompt or DEFAULT_REWRITE_SYSTEM_PROMPT
