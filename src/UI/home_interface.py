@@ -313,17 +313,25 @@ class EscKeyListener:
     用于在录音过程中按 ESC 取消录音
     """
 
-    def __init__(self, callback):
+    _ESC_VK = 0x1B
+    _KEYDOWN_MESSAGES = (0x0100, 0x0104)
+    _KEYUP_MESSAGES = (0x0101, 0x0105)
+
+    def __init__(self, callback, is_active):
         self.callback = callback
+        self.is_active = is_active
         self.listener = None
+        self._esc_event_suppressed = False
 
     def start(self):
         """
         启动快捷键监听
         """
-        self.listener = keyboard.Listener(
-            on_press=self._on_press
-        )
+        listener_kwargs = {"on_press": self._on_press}
+        if sys.platform == "win32":
+            listener_kwargs["win32_event_filter"] = self._win32_event_filter
+
+        self.listener = keyboard.Listener(**listener_kwargs)
         self.listener.start()
 
     def stop(self):
@@ -335,10 +343,40 @@ class EscKeyListener:
 
     def _on_press(self, key):
         try:
-            if key == keyboard.Key.esc:
+            if key == keyboard.Key.esc and self.is_active():
                 self.callback()
         except Exception:
             pass
+
+    def _win32_event_filter(self, msg, data):
+        """
+        录音中拦截 ESC，避免取消录音的同时触发前台应用的 ESC 快捷键
+        """
+        try:
+            is_esc = data.vkCode == self._ESC_VK
+        except Exception:
+            return True
+
+        if not is_esc:
+            return True
+
+        if msg in self._KEYDOWN_MESSAGES and self.is_active():
+            self._esc_event_suppressed = True
+            try:
+                self.callback()
+            except Exception:
+                pass
+            if self.listener:
+                self.listener.suppress_event()
+            return False
+
+        if msg in self._KEYUP_MESSAGES and self._esc_event_suppressed:
+            self._esc_event_suppressed = False
+            if self.listener:
+                self.listener.suppress_event()
+            return False
+
+        return True
 
 
 class HomeInterface(QWidget):
@@ -352,7 +390,7 @@ class HomeInterface(QWidget):
         self.engine = EngineController(self)
         self.overlay = OverlayWidget()
         self.hotkey_listener = HotkeyListener(self._toggle_recording)
-        self.esc_key_listener = EscKeyListener(self._on_esc_pressed)
+        self.esc_key_listener = EscKeyListener(self._on_esc_pressed, lambda: self.engine.is_recording)
         self._pending_rewrite_text = ""
         self._use_overlay = False
         self._devices_loaded = False

@@ -32,6 +32,7 @@ env/
 dist/
 build/
 out/
+outputs/
 
 # 忽略编译崩溃报告
 nuitka-crash-report.xml
