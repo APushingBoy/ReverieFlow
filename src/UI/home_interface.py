@@ -63,8 +63,43 @@ class EngineController(QObject):
             api_url=self.config.get("rewrite", "api_url", "https://dashscope.aliyuncs.com/api/v1"),
             api_key=self.config.get("rewrite", "api_key", ""),
             model=self.config.get("rewrite", "model", "qwen3.5-35b-a3b"),
-            system_prompt=self.config.get("rewrite", "system_prompt", "")
+            system_prompt=self.config.get_rewrite_system_prompt()
         )
+
+    def reload_config(self):
+        """
+        重新读取配置，并在安全的时机应用到运行时对象
+        """
+        self.config = ConfigManager()
+        self._refresh_text_rewriter()
+
+        if self.is_recording:
+            return
+
+        had_engines = bool(self.audio_capture or self.streaming_asr or self.text_rewriter)
+
+        if self.audio_capture:
+            del self.audio_capture
+            self.audio_capture = None
+        if self.streaming_asr:
+            self.streaming_asr.close()
+            del self.streaming_asr
+            self.streaming_asr = None
+
+        if had_engines:
+            self.init_engines()
+
+    def _refresh_text_rewriter(self):
+        """
+        文本润色配置可在下一次调用前直接刷新
+        """
+        if not self.text_rewriter:
+            return
+
+        self.text_rewriter.api_url = self.config.get("rewrite", "api_url", "https://dashscope.aliyuncs.com/api/v1")
+        self.text_rewriter.api_key = self.config.get("rewrite", "api_key", "")
+        self.text_rewriter.model = self.config.get("rewrite", "model", "qwen3.5-35b-a3b")
+        self.text_rewriter.system_prompt = self.config.get_rewrite_system_prompt()
 
     def get_devices(self) -> list:
         """
@@ -80,6 +115,8 @@ class EngineController(QObject):
         """
         if self.is_recording:
             return
+
+        self.reload_config()
 
         if not self.audio_capture:
             self.init_engines()
@@ -161,10 +198,7 @@ class EngineController(QObject):
         if not self.text_rewriter:
             self.init_engines()
         else:
-            self.text_rewriter.api_url = self.config.get("rewrite", "api_url", "https://dashscope.aliyuncs.com/api/v1")
-            self.text_rewriter.api_key = self.config.get("rewrite", "api_key", "")
-            self.text_rewriter.model = self.config.get("rewrite", "model", "qwen3.5-35b-a3b")
-            self.text_rewriter.system_prompt = self.config.get("rewrite", "system_prompt", "")
+            self._refresh_text_rewriter()
 
         if not self.text_rewriter.api_key:
             self.rewrite_error.emit("未配置文本润色 API Key，请前往设置页配置")
@@ -214,6 +248,9 @@ class EngineController(QObject):
         if self.streaming_asr:
             del self.streaming_asr
             self.streaming_asr = None
+        if self.text_rewriter:
+            del self.text_rewriter
+            self.text_rewriter = None
 
 
 class HotkeyListener:
@@ -402,6 +439,12 @@ class HomeInterface(QWidget):
         self.engine.rewrite_result.connect(self._on_rewrite_result)
         self.engine.rewrite_error.connect(self._on_rewrite_error)
         self.engine.status_changed.connect(self._on_status_changed)
+
+    def reload_config(self):
+        """
+        设置保存后刷新首页运行时配置
+        """
+        self.engine.reload_config()
 
     def _load_devices(self):
         """

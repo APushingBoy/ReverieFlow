@@ -12,37 +12,30 @@ import sys
 from pathlib import Path
 
 
-DEFAULT_REWRITE_SYSTEM_PROMPT = """
-你是一个专业的语音识别（ASR）文本润色助手。你的任务是将用户口述的原始文本，转换为通顺、准确的书面表达。
+USER_REWRITE_SYSTEM_PROMPT_FILENAME = "rewrite_system_prompt.txt"
 
-【基础润色规则】
-1. 保持原意与语气：维持口语的自然流畅性，绝不随意替换原文中的动词、名词等核心逻辑词汇。
-2. 剔除口语瑕疵：去除多余的语气词（啊、呃、呢）、无意义的重复内容和结巴。
-3. 智能代词推断：严格根据语境推断“他/她/它”等代词的正确形式。
 
-【特殊纠错机制：直接拼写覆盖】（最高优先级）
-为了解决生僻英文单词识别错误的问题，用户会在说出一个词后，**紧接着直接念出它的字母拼写**。
-由于ASR的特性，这些被念出的字母在文本中通常会带有空格或标点（如 "t r a e" 或 "t, r, a, e"）。
-当你检测到文本中出现【连续的单个英文字母】时，必须严格执行以下操作：
-1. 提取与合并：将这些连续的单字母合并为一个完整的英文单词（例如：将 "t r a e" 合并为 "trae"）。
-2. 向前追溯并替换：寻找这些字母紧挨着的前面一个词（它通常是ASR根据发音错误识别的中文或常见英文，如把trae识别成了"tree"或"吹"）。将那个错误词汇替换为刚刚合并出的正确单词。
-3. 抹除拼写痕迹：在最终输出的文本中，彻底删除那些用来拼写的散落字母，确保句子自然通顺。
+def _resource_root() -> Path:
+    """
+    获取资源根目录，兼容源码运行和 PyInstaller 打包运行
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent.parent
 
-【直接拼写覆盖示例】
-输入："于是就转向了 tree t r a e。这个工具比较新。"
-输出："于是就转向了 trae。这个工具比较新。" (解释：合并 t r a e 为 trae，替换前面的错词 tree，删除单字母)
 
-输入："我用 吹 t r a e 去修改了代码。"
-输出："我用 trae 去修改了代码。"
+def _load_default_rewrite_system_prompt() -> str:
+    """
+    从资源文件加载默认文本润色 system prompt
+    """
+    prompt_path = _resource_root() / "assets" / "default_rewrite_system_prompt.txt"
+    try:
+        return prompt_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "请将用户口述的原始文本润色为通顺、准确的书面表达。"
 
-输入："这个bug是在 威哎死扣的 v s c o d e 里面发现的。"
-输出："这个bug是在 vscode 里面发现的。"
 
-输入："给变量命名为 内幕 n a m e 然后继续。"
-输出："给变量命名为 name 然后继续。"
-
-请直接输出润色后的结果，不要包含任何解释或额外的对话。
-""".strip()
+DEFAULT_REWRITE_SYSTEM_PROMPT = _load_default_rewrite_system_prompt()
 
 
 DEFAULT_CONFIG = {
@@ -88,6 +81,7 @@ class ConfigManager:
         else:
             self.config_path = self._resolve_config_path()
 
+        self.rewrite_prompt_path = self.config_path.parent / USER_REWRITE_SYSTEM_PROMPT_FILENAME
         self.config = {}
         self._load_or_create()
 
@@ -224,6 +218,45 @@ class ConfigManager:
             dict: 完整配置字典的深拷贝
         """
         return json.loads(json.dumps(self.config))
+
+    def get_rewrite_system_prompt(self) -> str:
+        """
+        获取当前文本润色 system prompt
+
+        用户自定义 prompt 保存在 config.json 同级目录的独立文本文件中。
+        如果该文件不存在，则使用默认 prompt。
+        """
+        if self.rewrite_prompt_path.exists():
+            try:
+                prompt = self.rewrite_prompt_path.read_text(encoding="utf-8").strip()
+                return prompt or DEFAULT_REWRITE_SYSTEM_PROMPT
+            except OSError:
+                return DEFAULT_REWRITE_SYSTEM_PROMPT
+
+        return DEFAULT_REWRITE_SYSTEM_PROMPT
+
+    def save_rewrite_system_prompt(self, prompt: str):
+        """
+        保存用户自定义文本润色 system prompt 到独立文件
+        """
+        text = (prompt or "").strip()
+        if not text or text == DEFAULT_REWRITE_SYSTEM_PROMPT:
+            self.delete_rewrite_system_prompt()
+            return
+
+        self.rewrite_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+        self.rewrite_prompt_path.write_text(text, encoding="utf-8")
+
+    def delete_rewrite_system_prompt(self):
+        """
+        删除用户自定义 system prompt 文件，恢复默认 prompt
+        """
+        try:
+            self.rewrite_prompt_path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            print(f"删除自定义提示词文件失败: {e}")
 
     def save(self):
         """

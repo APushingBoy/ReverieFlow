@@ -1,5 +1,28 @@
 # 更新日志
 
+## [v0.2.3] - 2026-07-09
+
+### 新增
+- 文本润色支持自定义 system prompt，可在设置页打开多行编辑窗口进行修改
+- 默认文本润色 system prompt 拆分为 `assets/default_rewrite_system_prompt.txt`，便于单独维护和提交
+- 新生成的 `config.json` 会包含 `rewrite.system_prompt`，旧配置会自动合并默认值
+- 用户自定义 system prompt 保存到 `config.json` 同级目录的 `rewrite_system_prompt.txt`，恢复默认时删除该文件
+- 设置保存后刷新运行中的配置快照，避免修改 API Key、模型或关闭按钮行为后必须重启
+- 开发环境补充 uv 本地虚拟环境用法，并完善运行时依赖列表
+
+### 改进
+- 默认润色提示词改为从资源文件加载，便于复用和恢复默认
+- 系统提示词编辑窗口显式设置文本区域颜色，修复黑底黑字问题
+- 文本润色配置在下一次润色前刷新，ASR 与音频配置在下一次录音前刷新
+- 打包版 `config.json` 改为存放在 `ReverieFlow.exe` 同级目录，便于便携使用
+- Windows 程序版本信息更新为 `0.2.3.0`
+
+### 修复
+- 修复默认配置浅拷贝导致嵌套字典可能被污染的问题
+- 修复 `requirements.txt` 缺少 `PyQt-Fluent-Widgets`、`sounddevice`、`soundcard`、`pynput`、`pyperclip`、`pyautogui` 的问题
+
+---
+
 ## [v0.2.2] - 2026-04-29
 
 ### 新增

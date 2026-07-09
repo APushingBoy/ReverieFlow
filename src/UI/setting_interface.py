@@ -118,6 +118,8 @@ class SettingInterface(ScrollArea):
     设置页界面类
     """
 
+    settings_saved = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("SettingInterface")
@@ -129,6 +131,7 @@ class SettingInterface(ScrollArea):
         self.setStyleSheet("background-color: transparent; border: none;")
         self.view.setStyleSheet("background-color: transparent; border: none;")
         self.rewrite_system_prompt = ""
+        self.rewrite_system_prompt_changed = False
         self.init_ui()
         self.load_settings()
 
@@ -224,7 +227,7 @@ class SettingInterface(ScrollArea):
         about_card = SettingCard(
             FIF.INFO,
             "ReverieFlow",
-            f"版本 v0.2.2  |  开发者: Homie",
+            f"版本 v0.2.3  |  开发者: Homie",
             about_group
         )
         about_group.addSettingCard(about_card)
@@ -252,11 +255,8 @@ class SettingInterface(ScrollArea):
         self.rewrite_api_key_card.setText(self.config.get("rewrite", "api_key", ""))
         self.rewrite_api_url_card.line_edit.setText(self.config.get("rewrite", "api_url", ""))
         self.rewrite_model_card.line_edit.setText(self.config.get("rewrite", "model", ""))
-        self.rewrite_system_prompt = self.config.get(
-            "rewrite",
-            "system_prompt",
-            DEFAULT_REWRITE_SYSTEM_PROMPT
-        )
+        self.rewrite_system_prompt = self.config.get_rewrite_system_prompt()
+        self.rewrite_system_prompt_changed = False
 
         startup = self.config.get("ui", "startup_behavior", "show")
         self.startup_behavior_card.comboBox.setCurrentIndex(0 if startup == "show" else 1)
@@ -275,12 +275,14 @@ class SettingInterface(ScrollArea):
         self.config.set("rewrite", "api_key", self.rewrite_api_key_card.text())
         self.config.set("rewrite", "api_url", self.rewrite_api_url_card.line_edit.text())
         self.config.set("rewrite", "model", self.rewrite_model_card.line_edit.text())
-        self.config.set("rewrite", "system_prompt", self.rewrite_system_prompt)
+        if self.rewrite_system_prompt_changed:
+            self.config.save_rewrite_system_prompt(self.rewrite_system_prompt)
 
         self.config.set("ui", "startup_behavior", "show" if self.startup_behavior_card.comboBox.currentIndex() == 0 else "tray")
         self.config.set("ui", "close_behavior", "minimize" if self.close_behavior_card.comboBox.currentIndex() == 0 else "quit")
 
         self.config.save()
+        self.settings_saved.emit()
 
         InfoBar.success(
             "保存成功",
@@ -370,3 +372,4 @@ class SettingInterface(ScrollArea):
         if dialog.exec_() == QDialog.Accepted:
             prompt = prompt_edit.toPlainText().strip()
             self.rewrite_system_prompt = prompt or DEFAULT_REWRITE_SYSTEM_PROMPT
+            self.rewrite_system_prompt_changed = True

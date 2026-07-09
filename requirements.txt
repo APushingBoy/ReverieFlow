@@ -1,5 +1,7 @@
 # 音频处理依赖
 pyaudio==0.2.14
+sounddevice==0.5.5
+soundcard==0.4.6
 wave==0.0.2
 
 # 千问API依赖
@@ -13,6 +15,12 @@ requests==2.31.0
 
 # UI依赖
 PyQt5==5.15.10
+PyQt-Fluent-Widgets==1.11.2
+
+# 全局快捷键与自动粘贴
+pynput==1.8.2
+pyperclip==1.11.0
+pyautogui==0.9.54
 
 # 配置管理
 python-dotenv==1.0.0

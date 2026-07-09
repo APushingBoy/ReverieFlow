@@ -21,7 +21,12 @@ config.json
 # 忽略虚拟环境
 venv/
 .venv/
+.venv-build/
 env/
+
+# 忽略 uv 本地缓存/解释器目录
+.uv-cache/
+.uv-python/
 
 # 忽略打包输出目录
 dist/

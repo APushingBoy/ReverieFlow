@@ -24,7 +24,7 @@ class MainWindow(FluentWindow):
     主窗口类
     """
 
-    APP_VERSION = "v0.2.2"
+    APP_VERSION = "v0.2.3"
 
     def __init__(self, show_on_start=True):
         super().__init__()
@@ -64,6 +64,7 @@ class MainWindow(FluentWindow):
         """
         self.home_interface = HomeInterface(self)
         self.setting_interface = SettingInterface(self)
+        self.setting_interface.settings_saved.connect(self._on_settings_saved)
 
         self.addSubInterface(
             self.home_interface,
@@ -115,6 +116,13 @@ class MainWindow(FluentWindow):
         self.tray_manager.hide()
         from PyQt5.QtWidgets import QApplication
         QApplication.instance().quit()
+
+    def _on_settings_saved(self):
+        """
+        设置保存后刷新运行中的配置快照
+        """
+        self.config = ConfigManager()
+        self.home_interface.reload_config()
 
     def closeEvent(self, event):
         """
